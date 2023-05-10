@@ -1403,6 +1403,8 @@
     }
   },
 
+  "torch.sign1" : {},
+
   "torch.sign" : {
     "Matcher": "GenericMatcher",
     "paddle_api": "paddle.sign",
