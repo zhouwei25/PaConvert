@@ -72,22 +72,56 @@ class BaseTransformer(ast.NodeTransformer):
         self.node_stack.pop()
         return node
 
-    def record_scope(self, scope_node_body_index, node):
-        if node is None:
+    @property
+    def parent_node(self):
+        return self.node_stack[-2]
+
+    def scope_body_index(self, level=-1):
+        scope_node = self.scope_stack[level]
+
+        # reverse find scope_node in node_stack
+        lower = -1 * (len(self.node_stack) + 1)
+        for i in range(-1, lower, -1):
+            if self.node_stack[i] == scope_node:
+                for index, node in enumerate(scope_node.body):
+                    if node == self.node_stack[i + 1]:
+                        return scope_node, "body", index
+
+                if getattr(scope_node, "orelse", None):
+                    for index, node in enumerate(scope_node.orelse):
+                        if node == self.node_stack[i + 1]:
+                            return scope_node, "orelse", index
+
+                if getattr(scope_node, "decorator_list", None):
+                    for index, node in enumerate(scope_node.decorator_list):
+                        if node == self.node_stack[i + 1]:
+                            return scope_node, "decorator_list", index
+
+        return self.scope_body_index(-2)
+
+    def record_scope(self, scope_body_index, node_list):
+        if node_list is None:
             return
-        if not isinstance(node, list):
-            node = [node]
-        scope_node = scope_node_body_index[0]
-        body = scope_node_body_index[1]
-        index = scope_node_body_index[2]
+        if not isinstance(node_list, list):
+            node_list = [node_list]
+        scope_node = scope_body_index[0]
+        body = scope_body_index[1]
+        index = scope_body_index[2]
 
         if body in self.scope_insert_lines[scope_node]:
             if index in self.scope_insert_lines[scope_node][body]:
-                self.scope_insert_lines[scope_node][body][index].extend(node)
+                origin_node_list = self.scope_insert_lines[scope_node][body][index]
+                for node in node_list:
+                    # remove dumplicate node
+                    for ele in origin_node_list:
+                        if ast.dump(node) == ast.dump(ele):
+                            node_list.remove(node)
+
+                origin_node_list.extend(node_list)
             else:
-                self.scope_insert_lines[scope_node][body].update({index: node})
+                self.scope_insert_lines[scope_node][body].update({index: node_list})
         else:
-            self.scope_insert_lines[scope_node][body] = {index: node}
+            self.scope_insert_lines[scope_node][body] = {index: node_list}
 
     def insert_scope(self):
         # if multiple line, insert into scope node only One time
@@ -100,6 +134,18 @@ class BaseTransformer(ast.NodeTransformer):
                 for index, lines in insert_lines:
                     for line in lines[::-1]:
                         getattr(scope_node, body).insert(index, line)
+
+    def insert_multi_node(self, node_list):
+        import_nodes = []
+        other_nodes = []
+        for node in node_list:
+            if isinstance(node, (ast.Import, ast.ImportFrom)):
+                import_nodes.append(node)
+            else:
+                other_nodes.append(node)
+
+        self.record_scope((self.root, "body", 0), import_nodes)
+        self.record_scope(self.scope_body_index(), other_nodes)
 
     def log_debug(self, msg, file=None, line=None):
         if file:
