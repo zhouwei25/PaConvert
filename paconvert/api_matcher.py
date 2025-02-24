@@ -388,6 +388,21 @@ class EinopsTorchMatcher(BaseMatcher):
         return UnchangeMatcher.get_paddle_nodes(self, args, kwargs)
 
 
+class PaddleFlagMatcher(BaseMatcher):
+    def generate_utils_code(self):
+        CODE_TEMPLATE = textwrap.dedent(
+            """
+            class PaddleFlag:
+                cudnn_enabled = True
+                cudnn_benchmark = False
+                matmul_allow_tf32 = False
+                cudnn_allow_tf32 = True
+                cudnn_deterministic = False
+            """
+        )
+        return CODE_TEMPLATE
+
+
 class SetTrueMatcher(BaseMatcher):
     def get_paddle_api(self):
         return "True"

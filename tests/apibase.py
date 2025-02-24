@@ -55,19 +55,37 @@ class APIBase(object):
             unsupport: If true, conversion is not supported
             reason: the reason why it is not supported
         """
+        paddle_code = self.convert(pytorch_code).strip()
         if unsupport:
             assert (
                 reason is not None
             ), "Please explain the reason why it is not supported"
-            paddle_code = self.convert(pytorch_code)
+
             assert ">>>>>>" in paddle_code
             return
-        if compared_tensor_names:
+        if expect_paddle_code:
+            if paddle_code != expect_paddle_code.strip():
+                diff = difflib.unified_diff(
+                    paddle_code.splitlines(),
+                    expect_paddle_code.splitlines(),
+                    fromfile="expected",
+                    tofile="converted",
+                    lineterm="",
+                )
+                diff_text = "\n".join(diff)
+                error_msg = (
+                    f"[{self.pytorch_api}] Code conversion result differs from expectation:\n"
+                    f"{'-'*50}\n"
+                    f"Diff comparison:\n"
+                    f"{diff_text}\n"
+                    f"{'-'*50}"
+                )
+                assert paddle_code == expect_paddle_code, error_msg
+        elif compared_tensor_names:
             loc = locals()
             exec(pytorch_code, locals())
             pytorch_result = [loc[name] for name in compared_tensor_names]
 
-            paddle_code = self.convert(pytorch_code)
             exec(paddle_code, locals())
             paddle_result = [loc[name] for name in compared_tensor_names]
             for i in range(len(compared_tensor_names)):
@@ -81,26 +99,9 @@ class APIBase(object):
                     rtol,
                     atol,
                 )
-        if expect_paddle_code:
-            converted_code = self.convert(pytorch_code).strip()
-            expected_code = expect_paddle_code.strip()
-            if converted_code != expected_code:
-                diff = difflib.unified_diff(
-                    expected_code.splitlines(),
-                    converted_code.splitlines(),
-                    fromfile="expected",
-                    tofile="converted",
-                    lineterm="",
-                )
-                diff_text = "\n".join(diff)
-                error_msg = (
-                    f"[{self.pytorch_api}] Code conversion result differs from expectation:\n"
-                    f"{'-'*50}\n"
-                    f"Diff comparison:\n"
-                    f"{diff_text}\n"
-                    f"{'-'*50}"
-                )
-                assert converted_code == expected_code, error_msg
+        else:
+            exec(pytorch_code, locals())
+            exec(paddle_code, locals())
 
     def compare(
         self,

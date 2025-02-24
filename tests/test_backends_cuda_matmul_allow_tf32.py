@@ -16,14 +16,14 @@ import textwrap
 
 from apibase import APIBase
 
-obj = APIBase("torch.backends.cudnn.enabled")
+obj = APIBase("torch.backends.cuda.matmul.allow_tf32")
 
 
 def test_case_1():
     pytorch_code = textwrap.dedent(
         """
         import torch
-        result = torch.backends.cudnn.enabled
+        result = torch.backends.cuda.matmul.allow_tf32
         """
     )
     obj.run(pytorch_code, "result")
@@ -33,8 +33,8 @@ def test_case_2():
     pytorch_code = textwrap.dedent(
         """
         import torch
-        torch.backends.cudnn.enabled = False
-        result = torch.backends.cudnn.enabled
+        torch.backends.cuda.matmul.allow_tf32 = False
+        result = torch.backends.cuda.matmul.allow_tf32
         """
     )
     obj.run(pytorch_code, "result")
@@ -44,8 +44,8 @@ def test_case_3():
     pytorch_code = textwrap.dedent(
         """
         import torch
-        torch.backends.cudnn.enabled = True
-        result = torch.backends.cudnn.enabled
+        torch.backends.cuda.matmul.allow_tf32 = True
+        result = torch.backends.cuda.matmul.allow_tf32
         """
     )
     obj.run(pytorch_code, "result")
@@ -55,8 +55,8 @@ def test_case_4():
     pytorch_code = textwrap.dedent(
         """
         import torch
-        if torch.backends.cudnn.enabled:
-            print(torch.backends.cudnn.enabled)
+        if torch.backends.cuda.matmul.allow_tf32:
+            print(torch.backends.cuda.matmul.allow_tf32)
         """
     )
     obj.run(pytorch_code)
